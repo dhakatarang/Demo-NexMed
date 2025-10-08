@@ -1,0 +1,163 @@
+.footer {
+  background-color: #1a365d;
+  color: white;
+  padding: 3rem 0 1rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.brandColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.description {
+  color: #a0aec0;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.socials {
+  display: flex;
+  gap: 1rem;
+}
+
+.socials a {
+  color: #cbd5e0;
+  font-size: 1.2rem;
+  transition: color 0.2s ease;
+}
+
+.socials a:hover {
+  color: #48bb78;
+}
+
+.linksColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  color: white;
+}
+
+.links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.links a {
+  color: #a0aec0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.links a:hover {
+  color: #48bb78;
+}
+
+.newsletter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.input {
+  padding: 0.7rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.button {
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  padding: 0.7rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.button:hover {
+  background-color: #38a169;
+}
+
+.bottom {
+  border-top: 1px solid #2d3748;
+  padding-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.copyright {
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+.disclaimer {
+  color: #a0aec0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 1.5rem;
+  }
+  
+  .brandColumn {
+    grid-column: 1 / -1;
+    text-align: center;
+    align-items: center;
+  }
+  
+  .socials {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .linksColumn {
+    text-align: center;
+  }
+  
+  .links {
+    align-items: center;
+  }
+}
