@@ -61,8 +61,8 @@ const HeroCarousel = () => {
               <div className={css.carouselContent}>
                 <h1>{item.title}</h1>
                 <p>{item.description}</p>
-                <Link to="/signup" className={css.signUpBtn}>
-                  SIGN UP <FaArrowRight />
+                <Link to="/explore" className={css.signUpBtn}>
+                  EXPLORE MORE <FaArrowRight />
                 </Link>
               </div>
             </div>
