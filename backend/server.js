@@ -497,4 +497,4 @@ function extractBatchNumber(text) {
     }
 
     return 'N/A';
-}
+}[]
