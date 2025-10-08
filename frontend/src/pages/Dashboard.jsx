@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import MedicineCard from './MedicineCard';
+import MedicineCard from '../components/MedicineCard/MedicineCard';
 
 const Dashboard = () => {
   const [medicines, setMedicines] = useState([]);

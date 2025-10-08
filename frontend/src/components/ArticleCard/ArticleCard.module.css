@@ -1,0 +1,110 @@
+/* ArticleCard.module.css */
+.articleCard {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 100%; /* Ensures consistent card heights */
+  display: flex;
+  flex-direction: column;
+}
+
+.articleCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.articleImage {
+  height: 200px;
+  overflow: hidden;
+}
+
+.articleImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.articleCard:hover .articleImage img {
+  transform: scale(1.05);
+}
+
+.articleContent {
+  padding: 1.5rem;
+  flex-grow: 1; /* Makes content area fill remaining space */
+  display: flex;
+  flex-direction: column;
+}
+
+.articleCategory {
+  display: inline-block;
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  align-self: flex-start; /* Keeps category badge properly aligned */
+}
+
+.articleContent h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
+  color: #2c3e50;
+  line-height: 1.3;
+}
+
+.articleContent p {
+  color: #666;
+  margin-bottom: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  flex-grow: 1; /* Pushes read more button to bottom */
+}
+
+.readMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4CAF50;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  margin-top: auto; /* Ensures read more stays at bottom */
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.readMore:hover {
+  color: #2e7d32;
+}
+
+.readMore svg {
+  transition: transform 0.3s ease;
+}
+
+.readMore:hover svg {
+  transform: translateX(3px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .articleImage {
+    height: 160px;
+  }
+  
+  .articleContent {
+    padding: 1.2rem;
+  }
+  
+  .articleContent h3 {
+    font-size: 1.1rem;
+  }
+}

@@ -1,0 +1,90 @@
+.articlesSection {
+  padding: 4rem 2rem;
+  background-color: #f9f9f9;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sectionTitle {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.sectionSubtitle {
+  text-align: center;
+  font-size: 1.1rem;
+  margin-bottom: 3rem;
+  color: #7f8c8d;
+}
+
+.articlesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* CTA Box */
+.ctaBox {
+  background-color: #4CAF50;
+  color: white;
+  padding: 2.5rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.ctaBox h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ctaBox p {
+  margin-bottom: 2rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ctaButton {
+  background-color: white;
+  color: #4CAF50;
+  border: none;
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ctaButton:hover {
+  background-color: #f1f1f1;
+  transform: translateY(-2px);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .articlesSection {
+    padding: 3rem 1.5rem;
+  }
+  
+  .sectionTitle {
+    font-size: 1.8rem;
+  }
+  
+  .articlesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .ctaBox {
+    padding: 1.5rem;
+  }
+}

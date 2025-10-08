@@ -3,11 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import axios from 'axios';
 
 // Components
-import Auth from './components/Auth';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import Home from './components/Home';
-import Dashboard from './components/Dashboard';
+import Auth from './pages/Auth';
+import Header from "./pages/Header";
+import Footer from "./pages/Footer";
+import Home from "./pages/Home/Home";   // <-- point directly to Home.jsx
+import Dashboard from "./pages/Dashboard";
+
 
 function App() {
   const [user, setUser] = useState(null);
