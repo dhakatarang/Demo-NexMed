@@ -1,75 +1,113 @@
+// frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import SignUp from './pages/SignUp';
+import Login from './pages/Login';
+import Home from './pages/Home';
+import Medicines from './pages/Medicines';
+import MedicalEquipments from './pages/MedicalEquipments';
+import DonateRent from './pages/DonateRent';
+import About from './pages/About';
+import Profile from './pages/Profile';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 
-// Components
-import Auth from './pages/Auth';
-import Header from "./pages/Header";
-import Footer from "./pages/Footer";
-import Home from "./pages/Home/Home";   // <-- point directly to Home.jsx
-import Dashboard from "./pages/Dashboard";
+// Layout component to handle Navbar and Footer visibility
+function Layout({ children, isLoggedIn }) {
+  const location = useLocation();
+  
+  // Don't show Navbar/Footer on these pages even if logged in
+  const publicRoutes = ['/', '/login', '/signup'];
+  const isPublicRoute = publicRoutes.includes(location.pathname);
+  
+  // Show layout only if logged in AND not on public routes
+  const showLayout = isLoggedIn && !isPublicRoute;
 
+  return (
+    <div className="app">
+      {showLayout && <Navbar />}
+      <main className="main-content">
+        {children}
+      </main>
+      {showLayout && <Footer />}
+    </div>
+  );
+}
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Check login status on component mount and when localStorage changes
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('token');
+      const loggedIn = !!token;
+      setIsLoggedIn(loggedIn);
+      console.log('🔐 Login status checked:', loggedIn);
+    };
+
+    // Check initially
+    checkLoginStatus();
+
+    // Listen for storage changes (when login happens in another component)
+    window.addEventListener('storage', checkLoginStatus);
     
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-    setLoading(false);
+    // Custom event listener for login state changes
+    window.addEventListener('loginStateChange', checkLoginStatus);
+
+    // Poll for changes (fallback)
+    const interval = setInterval(checkLoginStatus, 1000);
+
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+      window.removeEventListener('loginStateChange', checkLoginStatus);
+      clearInterval(interval);
+    };
   }, []);
-
-  const login = (userData, token) => {
-    setUser(userData);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
-  };
-
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
 
   return (
     <Router>
-      <div className="App">
-        {user ? (
-          <>
-            <Header user={user} logout={logout} />
-            <main className="main-content">
-              <div className="container">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/medicines" element={<div>Medicines Page - To be implemented</div>} />
-                  <Route path="/alerts" element={<div>Alerts Page - To be implemented</div>} />
-                  <Route path="/profile" element={<div>Profile Page - To be implemented</div>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
-            </main>
-            <Footer />
-          </>
-        ) : (
-          <Routes>
-            <Route path="/auth" element={<Auth onLogin={login} />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </Routes>
-        )}
-      </div>
+      <Layout isLoggedIn={isLoggedIn}>
+        <Routes>
+          {/* Public routes - accessible without login */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
+          <Route path="/signup" element={<SignUp />} />
+          
+          {/* Protected routes - require login */}
+          <Route 
+            path="/home" 
+            element={isLoggedIn ? <Home /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/medicines" 
+            element={isLoggedIn ? <Medicines /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/medicalequipments" 
+            element={isLoggedIn ? <MedicalEquipments /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/donaterent" 
+            element={isLoggedIn ? <DonateRent /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/about" 
+            element={isLoggedIn ? <About /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/profile" 
+            element={isLoggedIn ? <Profile /> : <Navigate to="/login" replace />} 
+          />
+          
+          {/* Catch all route - redirect to home if logged in, else to landing */}
+          <Route 
+            path="*" 
+            element={isLoggedIn ? <Navigate to="/home" replace /> : <Navigate to="/" replace />} 
+          />
+        </Routes>
+      </Layout>
     </Router>
   );
 }

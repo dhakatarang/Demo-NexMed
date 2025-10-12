@@ -1,0 +1,145 @@
+/* frontend/src/components/Navbar.css */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 50px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: 70px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo-link {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000000;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.logo-link:hover {
+    color: #333333;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.nav-link {
+    color: #333333;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 16px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: #000000;
+    background-color: #f5f5f5;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background-color: #000000;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-link:hover::after {
+    width: 80%;
+}
+
+.logout-btn {
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.logout-btn:hover {
+    background-color: #333333;
+    transform: translateY(-1px);
+}
+
+/* Active link styling */
+.nav-link.active {
+    color: #000000;
+    font-weight: 600;
+}
+
+.nav-link.active::after {
+    width: 80%;
+    background-color: #000000;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0 20px;
+        height: 60px;
+    }
+    
+    .nav-links {
+        gap: 15px;
+    }
+    
+    .nav-link {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+    
+    .logo-link {
+        font-size: 20px;
+    }
+    
+    .logout-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        padding: 0 15px;
+    }
+    
+    .nav-links {
+        gap: 10px;
+    }
+    
+    .nav-link {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+    
+    .logo-link {
+        font-size: 18px;
+    }
+    
+    .logout-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
