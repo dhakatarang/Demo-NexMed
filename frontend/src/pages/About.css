@@ -1,0 +1,232 @@
+.about-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+  padding: 3rem 1rem;
+}
+
+/* Mission Section */
+.mission-section {
+  max-width: 80rem;
+  margin: 0 auto 1rem auto;
+}
+
+.mission-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.mission-title {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.title-underline {
+  width: 5rem;
+  height: 0.25rem;
+  background: #4f46e5;
+  margin: 0 auto;
+  border-radius: 0.125rem;
+}
+
+.mission-statement {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transform: translateY(0);
+  transition: all 0.3s ease;
+}
+
+.mission-statement:hover {
+  transform: scale(1.02);
+}
+
+.mission-text {
+  font-size: 1.5rem;
+  color: #374151;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.75;
+}
+
+/* Feature Sections */
+.feature-section {
+  max-width: 80rem;
+  margin: 0 auto 2rem auto;
+}
+
+.feature-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .feature-content {
+    flex-direction: row;
+  }
+  
+  .reversed {
+    flex-direction: row-reverse;
+  }
+}
+
+.feature-text {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .feature-text {
+    width: 50%;
+  }
+}
+
+.feature-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.feature-description {
+  font-size: 1.125rem;
+  color: #6b7280;
+  line-height: 1.75;
+  margin-bottom: 1.5rem;
+}
+
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.list-bullet {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+}
+
+.equipment-bullet {
+  background: #6b7280;
+}
+
+.medicine-bullet {
+  background: #6b7280;
+}
+
+.feature-graphic {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .feature-graphic {
+    width: 50%;
+  }
+}
+
+/* Image Styles */
+.feature-image {
+  width: 100%;
+  height: 480px; /* Reduced from 300px */
+  object-fit: contain; /* Changed from cover to contain to show full image */
+  border-radius: 0; /* Removed border radius */
+  box-shadow: none; /* Removed shadow */
+}
+
+
+/* Stats Section */
+.stats-section {
+  max-width: 80rem;
+  margin: 0 auto 5rem auto;
+  background: #1f2937;
+  border-radius: 1rem;
+  padding: 3rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.stats-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.stat-card {
+  text-align: center;
+  padding: 1.5rem;
+  background: #374151;
+  border-radius: 0.75rem;
+  transition: background-color 0.3s ease;
+}
+
+.stat-card:hover {
+  background: #4b5563;
+}
+
+.stat-number {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: #818cf8;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: #d1d5db;
+}
+
+/* CTA Section */
+.cta-section {
+  text-align: center;
+  margin-top: 4rem;
+}
+
+.cta-text {
+  font-size: 1.5rem;
+  color: #374151;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.cta-button {
+  background: #4f46e5;
+  color: white;
+  font-weight: bold;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+}
+
+.cta-button:hover {
+  background: #4338ca;
+  transform: scale(1.05);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}

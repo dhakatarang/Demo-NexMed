@@ -1,139 +1,177 @@
-// backend/controllers/authController.js
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User.js');
+const bcrypt = require('bcryptjs');
+const { authDB } = require('../database/dbConnections');
 const path = require('path');
 const fs = require('fs');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
-
 const signup = async (req, res) => {
+  try {
     const { name, email, password, userType } = req.body;
     const medicalLicense = req.file;
-    
-    console.log('🔐 Signup attempt:', { 
-        name, 
-        email, 
-        userType,
-        password: password ? '***' : 'missing',
-        hasLicenseFile: !!medicalLicense 
-    });
-    
+
+    console.log('📝 Signup request:', { name, email, userType });
+
+    // Validation
     if (!name || !email || !password || !userType) {
-        console.log('❌ Missing fields');
-        return res.status(400).json({ error: 'Name, email, password and user type are required' });
+      // Clean up uploaded file if validation fails
+      if (medicalLicense) {
+        fs.unlinkSync(medicalLicense.path);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        message: 'All fields are required' 
+      });
     }
 
-    try {
-        console.log('📧 Checking if email exists:', email);
-        
-        const existingUser = await User.findByEmail(email);
-        console.log('📊 Existing user check result:', existingUser);
-        
+    // Check if user already exists
+    authDB.get(
+      "SELECT id FROM users WHERE email = ?",
+      [email],
+      async (err, existingUser) => {
+        if (err) {
+          if (medicalLicense) fs.unlinkSync(medicalLicense.path);
+          console.error('❌ Database error during signup:', err);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Database error during registration' 
+          });
+        }
+
         if (existingUser) {
-            console.log('❌ Email already exists');
-            return res.status(400).json({ error: 'Email already in use' });
+          if (medicalLicense) fs.unlinkSync(medicalLicense.path);
+          return res.status(400).json({ 
+            success: false, 
+            message: 'User already exists with this email' 
+          });
         }
 
-        console.log('🔐 Hashing password...');
-        const hashed = await bcrypt.hash(password, 10);
-        console.log('✅ Password hashed');
-        
-        // Handle file upload
-        let licensePath = null;
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        // Handle medical license file
+        let medicalLicensePath = null;
         if (medicalLicense) {
-            // Create uploads directory if it doesn't exist
-            const uploadsDir = path.join(__dirname, '../uploads/licenses');
-            if (!fs.existsSync(uploadsDir)) {
-                fs.mkdirSync(uploadsDir, { recursive: true });
-            }
-            
-            // Generate unique filename
-            const fileExtension = path.extname(medicalLicense.originalname);
-            const fileName = `license_${Date.now()}${fileExtension}`;
-            licensePath = path.join('licenses', fileName);
-            
-            // Move file to uploads directory
-            const targetPath = path.join(uploadsDir, fileName);
-            fs.renameSync(medicalLicense.path, targetPath);
-            
-            console.log('📄 License file saved:', licensePath);
+          const uploadsDir = path.join(__dirname, '../uploads/licenses');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          
+          const fileExtension = path.extname(medicalLicense.originalname);
+          const fileName = `license-${Date.now()}${fileExtension}`;
+          const filePath = path.join(uploadsDir, fileName);
+          
+          fs.renameSync(medicalLicense.path, filePath);
+          medicalLicensePath = `licenses/${fileName}`;
         }
 
-        console.log('👤 Creating user in database...');
-        const userId = await User.create(name, email, hashed, userType, licensePath);
-        console.log('✅ User created with ID:', userId);
-        
-        console.log('🎫 Generating token...');
-        const token = jwt.sign({ id: userId, email, userType }, JWT_SECRET, { expiresIn: '7d' });
-        
-        console.log('🎉 Signup successful for user ID:', userId);
-        res.status(201).json({ 
-            message: 'User created successfully', 
-            token, 
-            userId,
-            user: { 
-                id: userId, 
-                name, 
-                email, 
-                userType 
+        // Insert new user
+        authDB.run(
+          `INSERT INTO users (name, email, password, user_type, medical_license_path) 
+           VALUES (?, ?, ?, ?, ?)`,
+          [name, email, hashedPassword, userType, medicalLicensePath],
+          function(err) {
+            if (err) {
+              if (medicalLicensePath) {
+                fs.unlinkSync(path.join(__dirname, '../uploads', medicalLicensePath));
+              }
+              console.error('❌ Error creating user:', err);
+              return res.status(500).json({ 
+                success: false, 
+                message: 'Error creating user account' 
+              });
             }
-        });
 
-    } catch (err) {
-        console.error('💥 Signup error details:', err);
-        console.error('💥 Error stack:', err.stack);
-        res.status(500).json({ error: 'Registration failed: ' + err.message });
+            const userId = this.lastID;
+            
+            res.status(201).json({
+              success: true,
+              message: 'User registered successfully',
+              user: {
+                id: userId,
+                name,
+                email,
+                userType
+              }
+            });
+          }
+        );
+      }
+    );
+
+  } catch (error) {
+    console.error('❌ Server error during signup:', error);
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
     }
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during registration',
+      error: error.message 
+    });
+  }
 };
 
 const login = async (req, res) => {
+  try {
     const { email, password } = req.body;
-    
+
     console.log('🔐 Login attempt for:', email);
-    
+
     if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password required' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email and password are required' 
+      });
     }
 
-    try {
-        const user = await User.findByEmail(email);
-        console.log('📊 User found:', user ? 'Yes' : 'No');
-        
+    authDB.get(
+      "SELECT * FROM users WHERE email = ?",
+      [email],
+      async (err, user) => {
+        if (err) {
+          console.error('❌ Database error during login:', err);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Database error during login' 
+          });
+        }
+
         if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Invalid email or password' 
+          });
         }
 
-        console.log('🔐 Comparing passwords...');
-        const match = await bcrypt.compare(password, user.password);
-        console.log('🔐 Password match:', match);
-        
-        if (!match) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        // Check password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Invalid email or password' 
+          });
         }
 
-        const token = jwt.sign({ 
-            id: user.id, 
-            email: user.email, 
-            userType: user.user_type 
-        }, JWT_SECRET, { expiresIn: '7d' });
+        // Return user data (without password)
+        const { password: _, ...userData } = user;
         
-        console.log('✅ Login successful for user ID:', user.id);
-        res.json({ 
-            message: 'Login successful', 
-            token, 
-            user: { 
-                id: user.id, 
-                name: user.name, 
-                email: user.email,
-                userType: user.user_type
-            } 
+        res.json({
+          success: true,
+          message: 'Login successful',
+          user: userData,
+          // In a real app, you'd return a JWT token here
+          token: user.id.toString() // Using user ID as simple token for demo
         });
+      }
+    );
 
-    } catch (err) {
-        console.error('💥 Login error:', err);
-        res.status(500).json({ error: 'Login failed: ' + err.message });
-    }
+  } catch (error) {
+    console.error('❌ Server error during login:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during login',
+      error: error.message 
+    });
+  }
 };
 
 module.exports = { signup, login };

@@ -1,7 +1,7 @@
-// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 
 // Import routes
 const authRoutes = require("./routes/authRoutes");
@@ -15,6 +15,13 @@ const { initAllDatabases } = require("./database/initDatabases");
 
 const app = express();
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Created uploads directory');
+}
+
 // Initialize databases when server starts
 console.log("🔄 Initializing databases...");
 initAllDatabases();
@@ -23,6 +30,7 @@ console.log("✅ Databases initialized successfully");
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Add request logging middleware for debugging
 app.use((req, res, next) => {
@@ -30,96 +38,73 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check route
+// Serve uploaded files statically
+app.use('/uploads', express.static(uploadsDir));
+
+// Public routes (no auth required)
 app.get("/", (req, res) => {
-  res.send("NexMed Backend is Running ✅");
+  res.json({ 
+    message: "NexMed Backend is Running ✅",
+    version: "2.0",
+    features: ["Enhanced Donate/Rent System", "Image Upload", "SQLite3 Database", "User Authentication"],
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Debug route to check database state
+// Public debug routes
 app.get("/api/debug-db", (req, res) => {
-  const { authDB } = require('./database/dbConnections');
+  const { authDB, medicinesDB, equipmentsDB, donateRentDB, profileDB } = require('./database/dbConnections');
   
   console.log("🔍 Checking database state...");
   
-  // Check if users table exists
-  authDB.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, tableRow) => {
-    if (err) {
-      console.error('❌ Table check error:', err);
-      return res.status(500).json({ error: 'Table check failed: ' + err.message });
-    }
-    
-    if (!tableRow) {
-      console.log('❌ Users table does not exist');
-      return res.status(500).json({ error: 'Users table not found' });
-    }
-    
-    console.log('✅ Users table exists');
-    
-    // Check table schema
-    authDB.all("PRAGMA table_info(users)", (err, columns) => {
+  const dbChecks = [
+    { name: 'users', db: authDB, query: 'SELECT COUNT(*) as count FROM users' },
+    { name: 'medicines', db: medicinesDB, query: 'SELECT COUNT(*) as count FROM medicines' },
+    { name: 'equipments', db: equipmentsDB, query: 'SELECT COUNT(*) as count FROM equipments' },
+    { name: 'donaterent', db: donateRentDB, query: 'SELECT COUNT(*) as count FROM donaterent' },
+    { name: 'profiles', db: profileDB, query: 'SELECT COUNT(*) as count FROM profiles' }
+  ];
+
+  let results = {};
+  let completed = 0;
+
+  dbChecks.forEach(({ name, db, query }) => {
+    db.get(query, [], (err, row) => {
       if (err) {
-        console.error('❌ Schema check error:', err);
-        return res.status(500).json({ error: 'Schema check failed: ' + err.message });
+        results[name] = { error: err.message, status: 'error' };
+      } else {
+        results[name] = { count: row.count, status: 'ok' };
       }
       
-      console.log('📋 Users table schema:', columns.map(col => col.name));
-      
-      // Check current users
-      authDB.all("SELECT id, name, email, user_type, medical_license_path, created_at FROM users", (err, users) => {
-        if (err) {
-          console.error('❌ Users query error:', err);
-          return res.status(500).json({ error: 'Users query failed: ' + err.message });
-        }
-        
-        console.log(`📊 Current users in database: ${users.length}`);
+      completed++;
+      if (completed === dbChecks.length) {
         res.json({ 
-          message: 'Database is working', 
-          tableExists: true,
-          userCount: users.length,
-          schema: columns.map(col => ({ name: col.name, type: col.type })),
-          users: users
+          message: 'Database status check completed',
+          databases: results,
+          timestamp: new Date().toISOString()
         });
-      });
-    });
-  });
-});
-
-// Debug route to check specific user registration
-app.get("/api/debug-user/:email", (req, res) => {
-  const { authDB } = require('./database/dbConnections');
-  const { email } = req.params;
-  
-  console.log(`🔍 Checking user: ${email}`);
-  
-  authDB.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
-    if (err) {
-      console.error('❌ User query error:', err);
-      return res.status(500).json({ error: 'User query failed: ' + err.message });
-    }
-    
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    console.log('✅ User found:', user);
-    res.json({ 
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        user_type: user.user_type,
-        medical_license_path: user.medical_license_path,
-        created_at: user.created_at
       }
     });
   });
 });
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Public test routes
+app.get("/api/test-donaterent", (req, res) => {
+  const { donateRentDB } = require('./database/dbConnections');
+  
+  donateRentDB.all("SELECT * FROM donaterent ORDER BY id DESC LIMIT 5", [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      message: 'DonateRent test successful',
+      items: rows,
+      count: rows.length
+    });
+  });
+});
 
-// Routes
+// Protected API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/equipments", equipmentRoutes);
@@ -134,7 +119,7 @@ app.use((req, res, next) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err.stack);
-  res.status(500).json({ message: "Internal Server Error" });
+  res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 
 // Start the server
@@ -143,5 +128,10 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/`);
   console.log(`🔍 Database debug: http://localhost:${PORT}/api/debug-db`);
-  console.log(`📁 Uploads served from: ${path.join(__dirname, 'uploads')}`);
+  console.log(`📁 Uploads served from: ${uploadsDir}`);
+  console.log(`💊 Medicines API: http://localhost:${PORT}/api/medicines`);
+  console.log(`🏥 Equipment API: http://localhost:${PORT}/api/equipments`);
+  console.log(`🤝 Donate/Rent API: http://localhost:${PORT}/api/donaterent`);
+  console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+  console.log(`👤 Profile API: http://localhost:${PORT}/api/profile`);
 });

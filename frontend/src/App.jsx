@@ -1,17 +1,56 @@
 // frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import axios from 'axios'; // Make sure axios is imported
 import LandingPage from './pages/LandingPage';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Home from './pages/Home';
-import Medicines from './pages/Medicines';
-import MedicalEquipments from './pages/MedicalEquipments';
+import Medicines from './pages/Medicine';
+import MedicalEquipments from './pages/MedicalEquipment';
 import DonateRent from './pages/DonateRent';
 import About from './pages/About';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+
+// ✅ ADD AXIOS INTERCEPTOR CONFIGURATION
+const setupAxiosInterceptors = () => {
+  // Request interceptor - automatically add token to all requests
+  axios.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log('🔐 Token added to request:', config.url);
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Response interceptor - handle token errors
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        // Token expired or invalid
+        console.log('❌ Token invalid, logging out...');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('loginStateChange'));
+        
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+};
 
 // Layout component to handle Navbar and Footer visibility
 function Layout({ children, isLoggedIn }) {
@@ -38,13 +77,19 @@ function Layout({ children, isLoggedIn }) {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // ✅ SETUP AXIOS INTERCEPTORS ON APP STARTUP
+  useEffect(() => {
+    setupAxiosInterceptors();
+    console.log('🚀 Axios interceptors configured');
+  }, []);
+
   // Check login status on component mount and when localStorage changes
   useEffect(() => {
     const checkLoginStatus = () => {
       const token = localStorage.getItem('token');
       const loggedIn = !!token;
       setIsLoggedIn(loggedIn);
-      console.log('🔐 Login status checked:', loggedIn);
+      console.log('🔐 Login status checked:', loggedIn, 'Token exists:', !!token);
     };
 
     // Check initially

@@ -1,13 +1,24 @@
-// frontend/src/components/Card.jsx
+// Card.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import './Card.css';
 
-function Card({ title, description, link }) {
+function Card({ title, description, link, image }) {
     const navigate = useNavigate();
+
+    const handleClick = () => {
+        navigate(link);
+    };
+
     return (
-        <div onClick={() => navigate(link)} style={{ border: '1px solid #ddd', padding: '20px', margin: '10px', cursor: 'pointer', borderRadius: '10px', boxShadow: '0 0 5px #ccc' }}>
-            <h3>{title}</h3>
-            <p>{description}</p>
+        <div className="card" onClick={handleClick}>
+            <div className="card-image-container">
+                <img src={image} alt={title} className="card-image" />
+            </div>
+            <div className="card-content">
+                <h3 className="card-title">{title}</h3>
+                <p className="card-description">{description}</p>
+            </div>
         </div>
     );
 }
