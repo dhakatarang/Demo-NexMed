@@ -9,46 +9,61 @@ if (!fs.existsSync(dbDir)) {
   console.log('📁 Created databases directory');
 }
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('📁 Created uploads directory');
-}
+// Ensure uploads directories exist
+const uploadsDirs = [
+  path.join(__dirname, '../uploads'),
+  path.join(__dirname, '../uploads/items'),
+  path.join(__dirname, '../uploads/profiles')
+];
 
-// Database file paths
+uploadsDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Created uploads directory: ${dir}`);
+  }
+});
+
+// Database file paths - using single database file for better relationships
 const dbPaths = {
-  auth: path.join(dbDir, 'auth.db'),
-  medicines: path.join(dbDir, 'medicines.db'),
-  equipments: path.join(dbDir, 'equipments.db'),
-  donaterent: path.join(dbDir, 'donaterent.db'),
-  profile: path.join(dbDir, 'profile.db')
+  main: path.join(dbDir, 'nexmed.db')  // Single database for all tables
 };
 
-console.log('📊 Database paths:', dbPaths);
+console.log('📊 Database path:', dbPaths.main);
 
-// Create database connections with error handling
+// Create single database connection with foreign keys enabled
 const createDBConnection = (dbPath, dbName) => {
-  return new sqlite3.Database(dbPath, (err) => {
+  const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
       console.error(`❌ Error connecting to ${dbName} database:`, err.message);
     } else {
       console.log(`✅ Connected to ${dbName} database: ${dbPath}`);
+      // Enable foreign keys
+      db.run('PRAGMA foreign_keys = ON');
+      db.run('PRAGMA journal_mode = WAL'); // Better performance
     }
   });
+
+  // Add error handler
+  db.on('error', (err) => {
+    console.error(`💥 Database error (${dbName}):`, err);
+  });
+
+  return db;
 };
 
-const authDB = createDBConnection(dbPaths.auth, 'auth');
-const medicinesDB = createDBConnection(dbPaths.medicines, 'medicines');
-const equipmentsDB = createDBConnection(dbPaths.equipments, 'equipments');
-const donateRentDB = createDBConnection(dbPaths.donaterent, 'donaterent');
-const profileDB = createDBConnection(dbPaths.profile, 'profile');
+const mainDB = createDBConnection(dbPaths.main, 'main');
 
+// For backward compatibility, export individual DB references
 module.exports = {
-  authDB,
-  medicinesDB,
-  equipmentsDB,
-  donateRentDB,
-  profileDB,
+  // Main database connection
+  mainDB,
+  
+  // Individual DB references (all point to same database)
+  authDB: mainDB,
+  medicinesDB: mainDB,
+  equipmentsDB: mainDB,
+  donateRentDB: mainDB,
+  profileDB: mainDB,
+  
   dbPaths
 };

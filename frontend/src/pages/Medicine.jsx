@@ -16,11 +16,7 @@ const Medicine = () => {
       setLoading(true);
       setMessage('');
       
-      // Debug: Check token
-      const token = localStorage.getItem('token');
-      console.log('🔐 Token exists:', !!token);
-      console.log('🔐 Token value:', token);
-      
+      console.log('🔍 Fetching medicines...');
       const response = await axios.get('http://localhost:5001/api/medicines/all');
       console.log('✅ Medicines response:', response.data);
       
@@ -32,18 +28,11 @@ const Medicine = () => {
     } catch (error) {
       console.error('💥 Error fetching medicines:', error);
       
-      // Detailed error info
       if (error.response) {
-        // Server responded with error status
-        console.error('💥 Server error:', error.response.status, error.response.data);
         setMessage(`Server error: ${error.response.status} - ${error.response.data.message || 'Unknown error'}`);
       } else if (error.request) {
-        // No response received
-        console.error('💥 No response:', error.request);
         setMessage('Network error: Could not connect to server');
       } else {
-        // Other errors
-        console.error('💥 Other error:', error.message);
         setMessage('Error: ' + error.message);
       }
     } finally {
@@ -91,14 +80,22 @@ const Medicine = () => {
             onClick={fetchMedicines} 
             style={{marginLeft: '10px', padding: '5px 10px'}}
           >
-            Retry
+            Refresh
           </button>
         </div>
       )}
 
       <div className="medicines-grid">
         {medicines.length === 0 ? (
-          <div className="no-items">No medicines available</div>
+          <div className="no-items">
+            No medicines available
+            <button 
+              onClick={fetchMedicines} 
+              style={{marginTop: '10px', padding: '8px 16px'}}
+            >
+              Try Again
+            </button>
+          </div>
         ) : (
           medicines.map(medicine => (
             <div key={medicine.id} className="medicine-card">
@@ -107,17 +104,20 @@ const Medicine = () => {
                   src={`http://localhost:5001/uploads/${medicine.image}`} 
                   alt={medicine.name}
                   className="medicine-image"
+                  onError={(e) => {
+                    e.target.style.display = 'none'; // Hide broken images
+                  }}
                 />
               )}
               <div className="medicine-info">
                 <h3>{medicine.name}</h3>
                 <p className="description">{medicine.description}</p>
                 <div className="medicine-details">
-                  <span className={`option-type ${medicine.optionType}`}>
-                    {medicine.optionType.toUpperCase()}
+                  <span className={`option-type ${medicine.optionType?.toLowerCase() || 'donate'}`}>
+                    {(medicine.optionType || 'donate').toUpperCase()}
                   </span>
                   <span className="quantity">Qty: {medicine.quantity}</span>
-                  {medicine.optionType === 'sell' && medicine.price && (
+                  {medicine.optionType === 'sell' && medicine.price > 0 && (
                     <span className="price">${medicine.price}</span>
                   )}
                 </div>

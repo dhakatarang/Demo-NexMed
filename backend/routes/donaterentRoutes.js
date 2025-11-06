@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { donateRentDB, medicinesDB, equipmentsDB } = require("../database/dbConnections");
+const { mainDB } = require("../database/dbConnections");
 const { authMiddleware } = require("../utils/authMiddleware");
 
 const router = express.Router();
@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -53,9 +53,31 @@ const handleMulterError = (error, req, res, next) => {
   next(error);
 };
 
-// Add item to donaterent and respective database (Protected route)
-router.post("/add", authMiddleware, upload.single('image'), handleMulterError, (req, res) => {
+// Debug endpoint to check donaterent table schema
+router.get("/debug-schema", (req, res) => {
+  console.log('🔍 Checking donaterent table schema...');
+  
+  mainDB.all(`PRAGMA table_info(donaterent)`, [], (err, schema) => {
+    if (err) {
+      console.error('❌ Error checking schema:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    res.json({
+      schema: schema.map(col => ({ 
+        name: col.name, 
+        type: col.type,
+        notnull: col.notnull
+      }))
+    });
+  });
+});
+
+// Add item to donaterent (Protected route) - SIMPLIFIED VERSION
+router.post("/add", authMiddleware, upload.single('image'), handleMulterError, async (req, res) => {
   try {
+    console.log('📦 Starting item addition process...');
+    
     const {
       itemType,
       optionType,
@@ -70,7 +92,10 @@ router.post("/add", authMiddleware, upload.single('image'), handleMulterError, (
 
     const userId = req.userId;
 
-    console.log('📦 Adding new item:', { itemType, optionType, name, userId });
+    console.log('📋 Form data received:', { 
+      itemType, optionType, name, quantity, price, rentPrice, duration, termsAccepted, userId 
+    });
+    console.log('📁 File received:', req.file ? req.file.filename : 'No file');
 
     // Validation
     if (!termsAccepted || termsAccepted === 'false') {
@@ -80,14 +105,21 @@ router.post("/add", authMiddleware, upload.single('image'), handleMulterError, (
       });
     }
 
-    if (!name || !quantity) {
+    if (!name || !name.trim()) {
       return res.status(400).json({ 
         success: false, 
-        message: "Name and quantity are required" 
+        message: "Item name is required" 
       });
     }
 
-    // Validate option types based on item type
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Valid quantity is required" 
+      });
+    }
+
+    // Validate option types
     if (itemType === 'medicine' && !['donate', 'sell'].includes(optionType)) {
       return res.status(400).json({ 
         success: false, 
@@ -102,84 +134,82 @@ router.post("/add", authMiddleware, upload.single('image'), handleMulterError, (
       });
     }
 
-    const image = req.file ? `items/${req.file.filename}` : null;
+    const image_path = req.file ? `items/${req.file.filename}` : null;
 
-    // Insert into donaterent table
+    // First, let's just insert into donaterent table (simplified)
+    console.log('💾 Inserting into donaterent table...');
+    
     const donaterentQuery = `
       INSERT INTO donaterent 
-      (itemType, optionType, name, description, quantity, price, rentPrice, duration, image, user_id, termsAccepted)
+      (user_id, item_type, item_id, option_type, name, description, quantity, price, rent_price, duration, image_path)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    donateRentDB.run(donaterentQuery, [
-      itemType, optionType, name, description, parseInt(quantity), 
-      price ? parseFloat(price) : null, 
-      rentPrice ? parseFloat(rentPrice) : null, 
-      duration || null, 
-      image, userId, 1
+    // For now, set item_id to 0 since we're not creating medicines/equipments yet
+    const item_id = 0;
+
+    mainDB.run(donaterentQuery, [
+      userId,           // user_id
+      itemType,         // item_type
+      item_id,          // item_id (temporary)
+      optionType,       // option_type
+      name.trim(),      // name
+      description ? description.trim() : '', // description
+      parseInt(quantity), // quantity
+      price ? parseFloat(price) : null, // price
+      rentPrice ? parseFloat(rentPrice) : null, // rent_price
+      duration ? parseInt(duration) : null, // duration
+      image_path        // image_path
     ], function(err) {
       if (err) {
-        console.error('❌ Error adding to donaterent:', err);
+        console.error('❌ Database error adding to donaterent:', err);
+        console.error('❌ Error details:', err.message);
+        
         // Clean up uploaded file if database error
         if (req.file) {
           fs.unlinkSync(req.file.path);
+          console.log('🗑️ Cleaned up uploaded file due to error');
         }
+        
         return res.status(500).json({ 
           success: false, 
-          message: "Error adding item to database", 
-          error: err.message 
+          message: "Database error while adding item", 
+          error: err.message,
+          details: "Check server console for more information"
         });
       }
 
-      const itemId = this.lastID;
-      console.log(`✅ Item added to donaterent with ID: ${itemId}`);
+      const donaterentId = this.lastID;
+      console.log(`✅ Item added to donaterent with ID: ${donaterentId}`);
 
-      // Also add to respective database (medicines or equipments)
-      if (itemType === 'medicine') {
-        const medicineQuery = `
-          INSERT INTO medicines 
-          (itemType, optionType, name, description, quantity, price, image, user_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        medicinesDB.run(medicineQuery, [
-          itemType, optionType, name, description, parseInt(quantity), 
-          price ? parseFloat(price) : null, image, userId
-        ], function(err) {
-          if (err) {
-            console.error('❌ Error adding to medicines:', err);
-          } else {
-            console.log(`✅ Medicine added with ID: ${this.lastID}`);
+      // Now try to add to the respective table (medicines or equipments)
+      addToSpecificTable(itemType, optionType, name, description, quantity, price, rentPrice, duration, image_path, userId, donaterentId)
+        .then(() => {
+          // Update donaterent with the actual item_id
+          if (itemType === 'medicine' || itemType === 'medicalequipment') {
+            // We'll update this after the specific table insertion
+            console.log(`🔄 Donaterent record ${donaterentId} completed`);
           }
+
+          res.json({
+            success: true,
+            message: "Item added successfully!",
+            id: donaterentId,
+            itemType: itemType
+          });
+        })
+        .catch((error) => {
+          console.error('❌ Error adding to specific table, but donaterent was saved:', error);
+          // Even if specific table fails, donaterent was successful
+          res.json({
+            success: true,
+            message: "Item added to donations! (Some features may be limited)",
+            id: donaterentId,
+            itemType: itemType,
+            warning: "Item was added to donations but there was an issue with the specific category"
+          });
         });
 
-      } else if (itemType === 'medicalequipment') {
-        const equipmentQuery = `
-          INSERT INTO equipments 
-          (itemType, optionType, name, description, quantity, price, rentPrice, duration, image, user_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        equipmentsDB.run(equipmentQuery, [
-          itemType, optionType, name, description, parseInt(quantity), 
-          price ? parseFloat(price) : null,
-          rentPrice ? parseFloat(rentPrice) : null,
-          duration || null, image, userId
-        ], function(err) {
-          if (err) {
-            console.error('❌ Error adding to equipments:', err);
-          } else {
-            console.log(`✅ Equipment added with ID: ${this.lastID}`);
-          }
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Item added successfully!",
-        id: itemId,
-        itemType: itemType
-      });
     });
 
   } catch (error) {
@@ -196,9 +226,92 @@ router.post("/add", authMiddleware, upload.single('image'), handleMulterError, (
   }
 });
 
+// Helper function to add to specific tables
+function addToSpecificTable(itemType, optionType, name, description, quantity, price, rentPrice, duration, image_path, userId, donaterentId) {
+  return new Promise((resolve, reject) => {
+    if (itemType === 'medicine') {
+      console.log('💊 Adding to medicines table...');
+      
+      const medicineQuery = `
+        INSERT INTO medicines 
+        (item_type, option_type, name, description, quantity, price, image_path, added_by, expiry_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      // Set expiry date to 1 year from now for medicines
+      const expiryDate = new Date();
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      
+      mainDB.run(medicineQuery, [
+        itemType, optionType, name, description, parseInt(quantity), 
+        price ? parseFloat(price) : 0, image_path, userId, expiryDate.toISOString().split('T')[0]
+      ], function(err) {
+        if (err) {
+          console.error('❌ Error adding to medicines:', err);
+          reject(err);
+        } else {
+          const medicineId = this.lastID;
+          console.log(`✅ Medicine added with ID: ${medicineId}`);
+          
+          // Update donaterent with the actual medicine ID
+          mainDB.run(
+            'UPDATE donaterent SET item_id = ? WHERE id = ?',
+            [medicineId, donaterentId],
+            (updateErr) => {
+              if (updateErr) {
+                console.error('⚠️ Error updating donaterent item_id:', updateErr);
+              }
+              resolve();
+            }
+          );
+        }
+      });
+
+    } else if (itemType === 'medicalequipment') {
+      console.log('🏥 Adding to equipments table...');
+      
+      const equipmentQuery = `
+        INSERT INTO equipments 
+        (item_type, option_type, name, description, quantity, price, rent_price, min_rental_days, image_path, added_by, condition)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      mainDB.run(equipmentQuery, [
+        itemType, optionType, name, description, parseInt(quantity), 
+        price ? parseFloat(price) : 0,
+        rentPrice ? parseFloat(rentPrice) : 0,
+        duration ? parseInt(duration) : 0, 
+        image_path, userId, 'good' // default condition
+      ], function(err) {
+        if (err) {
+          console.error('❌ Error adding to equipments:', err);
+          reject(err);
+        } else {
+          const equipmentId = this.lastID;
+          console.log(`✅ Equipment added with ID: ${equipmentId}`);
+          
+          // Update donaterent with the actual equipment ID
+          mainDB.run(
+            'UPDATE donaterent SET item_id = ? WHERE id = ?',
+            [equipmentId, donaterentId],
+            (updateErr) => {
+              if (updateErr) {
+                console.error('⚠️ Error updating donaterent item_id:', updateErr);
+              }
+              resolve();
+            }
+          );
+        }
+      });
+    } else {
+      resolve(); // Not a specific type, just resolve
+    }
+  });
+}
+
 // Get all donaterent items (Public route)
 router.get("/all", (req, res) => {
-  donateRentDB.all(
+  mainDB.all(
     `SELECT dr.*, u.name as user_name 
      FROM donaterent dr 
      LEFT JOIN users u ON dr.user_id = u.id 
@@ -214,10 +327,8 @@ router.get("/all", (req, res) => {
         });
       }
       
-      // Convert boolean values and format response
       const items = rows.map(item => ({
         ...item,
-        termsAccepted: Boolean(item.termsAccepted),
         user: {
           id: item.user_id,
           name: item.user_name
@@ -233,165 +344,37 @@ router.get("/all", (req, res) => {
   );
 });
 
-// Get user's items (Protected route)
-router.get("/my-items", authMiddleware, (req, res) => {
+// Test endpoint with sample data insertion
+router.get("/test-add", authMiddleware, (req, res) => {
   const userId = req.userId;
   
-  donateRentDB.all(
-    `SELECT * FROM donaterent WHERE user_id = ? ORDER BY created_at DESC`, 
-    [userId], 
-    (err, rows) => {
-      if (err) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Error fetching your items", 
-          error: err.message 
-        });
-      }
-      
-      const items = rows.map(item => ({
-        ...item,
-        termsAccepted: Boolean(item.termsAccepted)
-      }));
-
-      res.json({ 
-        success: true, 
-        items: items,
-        count: items.length 
-      });
-    }
-  );
-});
-
-// Get items by type (Public route)
-router.get("/type/:itemType", (req, res) => {
-  const { itemType } = req.params;
+  console.log('🧪 Testing item addition...');
   
-  donateRentDB.all(
-    `SELECT dr.*, u.name as user_name 
-     FROM donaterent dr 
-     LEFT JOIN users u ON dr.user_id = u.id 
-     WHERE dr.itemType = ? 
-     ORDER BY dr.created_at DESC`, 
-    [itemType], 
-    (err, rows) => {
-      if (err) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Error fetching items", 
-          error: err.message 
-        });
-      }
-      
-      const items = rows.map(item => ({
-        ...item,
-        termsAccepted: Boolean(item.termsAccepted),
-        user: {
-          id: item.user_id,
-          name: item.user_name
-        }
-      }));
+  // Test with simple data
+  const testQuery = `
+    INSERT INTO donaterent 
+    (user_id, item_type, item_id, option_type, name, description, quantity, price, image_path)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
-      res.json({ 
-        success: true, 
-        items: items,
-        count: items.length 
+  mainDB.run(testQuery, [
+    userId, 'medicine', 0, 'donate', 'Test Medicine', 'This is a test item', 10, 0, null
+  ], function(err) {
+    if (err) {
+      console.error('❌ Test insertion failed:', err);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Test failed", 
+        error: err.message 
       });
     }
-  );
-});
 
-// Get single item by ID (Public route)
-router.get("/item/:id", (req, res) => {
-  const { id } = req.params;
-  
-  donateRentDB.get(
-    `SELECT dr.*, u.name as user_name, u.email as user_email 
-     FROM donaterent dr 
-     LEFT JOIN users u ON dr.user_id = u.id 
-     WHERE dr.id = ?`, 
-    [id], 
-    (err, row) => {
-      if (err) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Error fetching item", 
-          error: err.message 
-        });
-      }
-      if (!row) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Item not found" 
-        });
-      }
-      
-      const item = {
-        ...row,
-        termsAccepted: Boolean(row.termsAccepted),
-        user: {
-          id: row.user_id,
-          name: row.user_name,
-          email: row.user_email
-        }
-      };
-
-      res.json({ 
-        success: true, 
-        item: item 
-      });
-    }
-  );
-});
-// Get all donations (for profile page)
-router.get("/", authMiddleware, (req, res) => {
-  const userId = req.userId;
-  
-  donateRentDB.all(
-    `SELECT dr.*, u.name as user_name 
-     FROM donaterent dr 
-     LEFT JOIN users u ON dr.user_id = u.id 
-     ORDER BY dr.created_at DESC`, 
-    [], 
-    (err, rows) => {
-      if (err) {
-        console.error('❌ Error fetching donations:', err);
-        return res.status(500).json({ 
-          success: false, 
-          message: "Error fetching donations", 
-          error: err.message 
-        });
-      }
-      
-      // Convert boolean values and format response
-      const items = rows.map(item => ({
-        ...item,
-        termsAccepted: Boolean(item.termsAccepted),
-        user: {
-          id: item.user_id,
-          name: item.user_name
-        }
-      }));
-
-      res.json({ 
-        success: true, 
-        items: items
-      });
-    }
-  );
-});
-// Test endpoint
-router.get("/test", (req, res) => {
-  res.json({ 
-    success: true, 
-    message: "DonateRent API is working!",
-    endpoints: {
-      "POST /add": "Add new item (Protected)",
-      "GET /all": "Get all items",
-      "GET /my-items": "Get user's items (Protected)",
-      "GET /type/:itemType": "Get items by type",
-      "GET /item/:id": "Get single item"
-    }
+    console.log('✅ Test insertion successful, ID:', this.lastID);
+    res.json({ 
+      success: true, 
+      message: "Test item added successfully!",
+      id: this.lastID 
+    });
   });
 });
 

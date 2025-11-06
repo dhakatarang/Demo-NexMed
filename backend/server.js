@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -10,8 +11,8 @@ const equipmentRoutes = require("./routes/equipmentRoutes");
 const donaterentRoutes = require("./routes/donaterentRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 
-// Import database initialization
-const { initAllDatabases } = require("./database/initDatabases");
+// Import database initialization - FIX THE FILENAME
+const { initAllDatabases } = require("./database/initDatabases"); // Changed from initDatabases to initdatabases
 
 const app = express();
 
@@ -22,13 +23,23 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('📁 Created uploads directory');
 }
 
+// Ensure profiles directory exists
+const profilesDir = path.join(__dirname, 'uploads/profiles');
+if (!fs.existsSync(profilesDir)) {
+  fs.mkdirSync(profilesDir, { recursive: true });
+  console.log('📁 Created profiles directory');
+}
+
 // Initialize databases when server starts
 console.log("🔄 Initializing databases...");
 initAllDatabases();
 console.log("✅ Databases initialized successfully");
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Your React app URL
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -53,23 +64,23 @@ app.get("/", (req, res) => {
 
 // Public debug routes
 app.get("/api/debug-db", (req, res) => {
-  const { authDB, medicinesDB, equipmentsDB, donateRentDB, profileDB } = require('./database/dbConnections');
+  const { mainDB } = require('./database/dbConnections');
   
   console.log("🔍 Checking database state...");
   
-  const dbChecks = [
-    { name: 'users', db: authDB, query: 'SELECT COUNT(*) as count FROM users' },
-    { name: 'medicines', db: medicinesDB, query: 'SELECT COUNT(*) as count FROM medicines' },
-    { name: 'equipments', db: equipmentsDB, query: 'SELECT COUNT(*) as count FROM equipments' },
-    { name: 'donaterent', db: donateRentDB, query: 'SELECT COUNT(*) as count FROM donaterent' },
-    { name: 'profiles', db: profileDB, query: 'SELECT COUNT(*) as count FROM profiles' }
+  const tableChecks = [
+    { name: 'users', query: 'SELECT COUNT(*) as count FROM users' },
+    { name: 'medicines', query: 'SELECT COUNT(*) as count FROM medicines' },
+    { name: 'equipments', query: 'SELECT COUNT(*) as count FROM equipments' },
+    { name: 'donaterent', query: 'SELECT COUNT(*) as count FROM donaterent' },
+    { name: 'orders', query: 'SELECT COUNT(*) as count FROM orders' }
   ];
 
   let results = {};
   let completed = 0;
 
-  dbChecks.forEach(({ name, db, query }) => {
-    db.get(query, [], (err, row) => {
+  tableChecks.forEach(({ name, query }) => {
+    mainDB.get(query, [], (err, row) => {
       if (err) {
         results[name] = { error: err.message, status: 'error' };
       } else {
@@ -77,10 +88,11 @@ app.get("/api/debug-db", (req, res) => {
       }
       
       completed++;
-      if (completed === dbChecks.length) {
+      if (completed === tableChecks.length) {
         res.json({ 
           message: 'Database status check completed',
-          databases: results,
+          database: 'nexmed.db (single database)',
+          tables: results,
           timestamp: new Date().toISOString()
         });
       }
@@ -88,19 +100,12 @@ app.get("/api/debug-db", (req, res) => {
   });
 });
 
-// Public test routes
-app.get("/api/test-donaterent", (req, res) => {
-  const { donateRentDB } = require('./database/dbConnections');
-  
-  donateRentDB.all("SELECT * FROM donaterent ORDER BY id DESC LIMIT 5", [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({
-      message: 'DonateRent test successful',
-      items: rows,
-      count: rows.length
-    });
+// Test profile endpoint directly
+app.get("/api/profile/test", (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "Profile API endpoint is working!",
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -113,13 +118,23 @@ app.use("/api/profile", profileRoutes);
 
 // 404 fallback
 app.use((req, res, next) => {
-  res.status(404).json({ message: "Route not found" });
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    success: false,
+    message: "Route not found",
+    path: req.path,
+    method: req.method
+  });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err.stack);
-  res.status(500).json({ message: "Internal Server Error", error: err.message });
+  res.status(500).json({ 
+    success: false,
+    message: "Internal Server Error", 
+    error: err.message 
+  });
 });
 
 // Start the server
@@ -128,6 +143,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/`);
   console.log(`🔍 Database debug: http://localhost:${PORT}/api/debug-db`);
+  console.log(`👤 Profile test: http://localhost:${PORT}/api/profile/test`);
   console.log(`📁 Uploads served from: ${uploadsDir}`);
   console.log(`💊 Medicines API: http://localhost:${PORT}/api/medicines`);
   console.log(`🏥 Equipment API: http://localhost:${PORT}/api/equipments`);

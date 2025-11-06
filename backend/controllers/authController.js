@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { authDB } = require('../database/dbConnections');
+const { mainDB } = require('../database/dbConnections');
 const path = require('path');
 const fs = require('fs');
 
@@ -12,7 +12,6 @@ const signup = async (req, res) => {
 
     // Validation
     if (!name || !email || !password || !userType) {
-      // Clean up uploaded file if validation fails
       if (medicalLicense) {
         fs.unlinkSync(medicalLicense.path);
       }
@@ -23,7 +22,7 @@ const signup = async (req, res) => {
     }
 
     // Check if user already exists
-    authDB.get(
+    mainDB.get(
       "SELECT id FROM users WHERE email = ?",
       [email],
       async (err, existingUser) => {
@@ -63,8 +62,8 @@ const signup = async (req, res) => {
           medicalLicensePath = `licenses/${fileName}`;
         }
 
-        // Insert new user
-        authDB.run(
+        // Insert new user (NO profile photo during signup)
+        mainDB.run(
           `INSERT INTO users (name, email, password, user_type, medical_license_path) 
            VALUES (?, ?, ?, ?, ?)`,
           [name, email, hashedPassword, userType, medicalLicensePath],
@@ -123,7 +122,7 @@ const login = async (req, res) => {
       });
     }
 
-    authDB.get(
+    mainDB.get(
       "SELECT * FROM users WHERE email = ?",
       [email],
       async (err, user) => {
@@ -158,8 +157,7 @@ const login = async (req, res) => {
           success: true,
           message: 'Login successful',
           user: userData,
-          // In a real app, you'd return a JWT token here
-          token: user.id.toString() // Using user ID as simple token for demo
+          token: user.id.toString()
         });
       }
     );

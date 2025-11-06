@@ -27,7 +27,12 @@ const DonateRent = () => {
   };
 
   const handleImageChange = (e) => {
-    setImage(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file && file.size > 5 * 1024 * 1024) {
+      setMessage('File size must be less than 5MB');
+      return;
+    }
+    setImage(file);
   };
 
   const handleSubmit = async (e) => {
@@ -38,21 +43,48 @@ const DonateRent = () => {
       return;
     }
 
+    // Validation for sell/rent options
+    if (formData.optionType === 'sell' && !formData.price) {
+      setMessage('Price is required for selling items');
+      return;
+    }
+
+    if (formData.optionType === 'rent' && (!formData.rentPrice || !formData.duration)) {
+      setMessage('Rent price and duration are required for rental items');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
     const submitData = new FormData();
+    
+    // Append all form data
     Object.keys(formData).forEach(key => {
-      submitData.append(key, formData[key]);
+      if (key === 'termsAccepted') {
+        submitData.append(key, formData[key].toString());
+      } else {
+        submitData.append(key, formData[key]);
+      }
     });
+    
     if (image) {
       submitData.append('image', image);
     }
 
     try {
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setMessage('Please login to add items');
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.post('http://localhost:5001/api/donaterent/add', submitData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -71,10 +103,12 @@ const DonateRent = () => {
           termsAccepted: false
         });
         setImage(null);
-        document.getElementById('image-upload').value = '';
+        const fileInput = document.getElementById('image-upload');
+        if (fileInput) fileInput.value = '';
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Error adding item');
+      console.error('Error adding item:', error);
+      setMessage(error.response?.data?.message || error.response?.data?.error || 'Error adding item');
     } finally {
       setLoading(false);
     }
@@ -145,6 +179,7 @@ const DonateRent = () => {
               onChange={handleInputChange}
               placeholder="Enter item description"
               rows="3"
+              required
             />
           </div>
 
@@ -165,51 +200,49 @@ const DonateRent = () => {
           {/* Price (show for sell/rent) */}
           {(formData.optionType === 'sell' || formData.optionType === 'rent') && (
             <div className="form-group">
-              <label>Price ($):</label>
+              <label>{formData.optionType === 'rent' ? 'Sale Price ($)' : 'Price ($)'}:</label>
               <input
                 type="number"
                 name="price"
                 value={formData.price}
                 onChange={handleInputChange}
-                placeholder="Enter price"
+                placeholder={formData.optionType === 'rent' ? 'Enter sale price (optional)' : 'Enter price'}
                 min="0"
                 step="0.01"
-                required={formData.optionType === 'sell' || formData.optionType === 'rent'}
+                required={formData.optionType === 'sell'}
               />
             </div>
           )}
 
-          {/* Rent Price (show for rent only) */}
+          {/* Rent-specific fields */}
           {formData.optionType === 'rent' && (
-            <div className="form-group">
-              <label>Rent Price ($/day):</label>
-              <input
-                type="number"
-                name="rentPrice"
-                value={formData.rentPrice}
-                onChange={handleInputChange}
-                placeholder="Enter rent price per day"
-                min="0"
-                step="0.01"
-                required
-              />
-            </div>
-          )}
-
-          {/* Duration (show for rent only) */}
-          {formData.optionType === 'rent' && (
-            <div className="form-group">
-              <label>Rental Duration (days):</label>
-              <input
-                type="number"
-                name="duration"
-                value={formData.duration}
-                onChange={handleInputChange}
-                placeholder="Enter rental duration in days"
-                min="1"
-                required
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label>Rent Price ($/day):</label>
+                <input
+                  type="number"
+                  name="rentPrice"
+                  value={formData.rentPrice}
+                  onChange={handleInputChange}
+                  placeholder="Enter rent price per day"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Minimum Rental Duration (days):</label>
+                <input
+                  type="number"
+                  name="duration"
+                  value={formData.duration}
+                  onChange={handleInputChange}
+                  placeholder="Enter minimum rental duration"
+                  min="1"
+                  required
+                />
+              </div>
+            </>
           )}
 
           {/* Image Upload */}
@@ -221,6 +254,7 @@ const DonateRent = () => {
               accept="image/*"
               onChange={handleImageChange}
             />
+            <small>Maximum file size: 5MB (JPEG, JPG, PNG, GIF)</small>
           </div>
 
           {/* Terms and Conditions */}
