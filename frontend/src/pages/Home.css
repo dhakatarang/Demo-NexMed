@@ -2,7 +2,10 @@
 .home-page {
   min-height: 100vh;
 }
-
+.home-page {
+    margin-top: 70px; /* prevents hero section from hiding under navbar */
+    overflow-x: hidden;
+}
 /* Enhanced Hero Section */
 .hero-section {
   position: relative;

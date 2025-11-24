@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './DonateRent.css';
 
@@ -17,12 +17,71 @@ const DonateRent = () => {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [highlightRent, setHighlightRent] = useState(false);
+
+  // Calculate estimated values for rent comparison
+  const calculateRentComparison = () => {
+    if (!formData.price || !formData.rentPrice) return null;
+    
+    const salePrice = parseFloat(formData.price);
+    const dailyRent = parseFloat(formData.rentPrice);
+    
+    const weeklyCost = dailyRent * 7;
+    const monthlyCost = dailyRent * 30;
+    const breakEvenDays = salePrice / dailyRent;
+    
+    return {
+      weeklyCost: weeklyCost.toFixed(2),
+      monthlyCost: monthlyCost.toFixed(2),
+      breakEvenDays: Math.ceil(breakEvenDays)
+    };
+  };
+
+  const rentComparison = calculateRentComparison();
+
+  useEffect(() => {
+    if (formData.optionType === 'rent') {
+      setHighlightRent(true);
+      const timer = setTimeout(() => setHighlightRent(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.optionType]);
+
+  // Reset option type to donate if medicine is selected and current option is rent
+  useEffect(() => {
+    if (formData.itemType === 'medicine' && formData.optionType === 'rent') {
+      setFormData(prev => ({
+        ...prev,
+        optionType: 'donate',
+        rentPrice: '',
+        duration: ''
+      }));
+      setMessage('Rent option is not available for medicine. Switched to Donate.');
+    }
+  }, [formData.itemType]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleOptionTypeChange = (optionType) => {
+    // Prevent selecting rent for medicine
+    if (formData.itemType === 'medicine' && optionType === 'rent') {
+      setMessage('Rent option is only available for Medical Equipment');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      optionType,
+      // Reset price fields when switching to donate
+      ...(optionType === 'donate' && { price: '', rentPrice: '', duration: '' }),
+      // Reset rent fields when switching from rent
+      ...(prev.optionType === 'rent' && optionType !== 'rent' && { rentPrice: '', duration: '' })
     }));
   };
 
@@ -33,6 +92,7 @@ const DonateRent = () => {
       return;
     }
     setImage(file);
+    setMessage('');
   };
 
   const handleSubmit = async (e) => {
@@ -43,15 +103,21 @@ const DonateRent = () => {
       return;
     }
 
-    // Validation for sell/rent options
+    // Enhanced validation
     if (formData.optionType === 'sell' && !formData.price) {
       setMessage('Price is required for selling items');
       return;
     }
 
-    if (formData.optionType === 'rent' && (!formData.rentPrice || !formData.duration)) {
-      setMessage('Rent price and duration are required for rental items');
-      return;
+    if (formData.optionType === 'rent') {
+      if (!formData.rentPrice) {
+        setMessage('Rent price is required for rental items');
+        return;
+      }
+      if (parseFloat(formData.rentPrice) <= 0) {
+        setMessage('Rent price must be greater than 0');
+        return;
+      }
     }
 
     setLoading(true);
@@ -59,7 +125,6 @@ const DonateRent = () => {
 
     const submitData = new FormData();
     
-    // Append all form data
     Object.keys(formData).forEach(key => {
       if (key === 'termsAccepted') {
         submitData.append(key, formData[key].toString());
@@ -73,7 +138,6 @@ const DonateRent = () => {
     }
 
     try {
-      // Get token from localStorage
       const token = localStorage.getItem('token');
       if (!token) {
         setMessage('Please login to add items');
@@ -114,6 +178,9 @@ const DonateRent = () => {
     }
   };
 
+  // Check if rent option should be available
+  const isRentAvailable = formData.itemType === 'medicalequipment';
+
   return (
     <div className="donate-rent-container">
       <div className="donate-rent-form">
@@ -140,21 +207,70 @@ const DonateRent = () => {
             </select>
           </div>
 
-          {/* Option Type Selection */}
+          {/* Enhanced Option Type Selection */}
           <div className="form-group">
-            <label>Option Type:</label>
-            <select 
-              name="optionType" 
-              value={formData.optionType} 
-              onChange={handleInputChange}
-              required
-            >
-              <option value="donate">Donate</option>
-              <option value="sell">Sell</option>
-              {formData.itemType === 'medicalequipment' && (
-                <option value="rent">Rent</option>
-              )}
-            </select>
+            <label>What would you like to do?</label>
+            <div className="option-type-container">
+              <input
+                type="radio"
+                name="optionType"
+                value="donate"
+                id="donate-option"
+                checked={formData.optionType === 'donate'}
+                onChange={() => handleOptionTypeChange('donate')}
+                className="option-type-radio"
+              />
+              <label htmlFor="donate-option" className="option-type-label">
+                <div className="option-icon">🎁</div>
+                <div className="option-title">Donate</div>
+                <div className="option-description">Give away for free</div>
+              </label>
+
+              <input
+                type="radio"
+                name="optionType"
+                value="sell"
+                id="sell-option"
+                checked={formData.optionType === 'sell'}
+                onChange={() => handleOptionTypeChange('sell')}
+                className="option-type-radio"
+              />
+              <label htmlFor="sell-option" className="option-type-label">
+                <div className="option-icon">💰</div>
+                <div className="option-title">Sell</div>
+                <div className="option-description">One-time purchase</div>
+              </label>
+
+              {/* Rent Option - Conditionally rendered and styled */}
+              <input
+                type="radio"
+                name="optionType"
+                value="rent"
+                id="rent-option"
+                checked={formData.optionType === 'rent'}
+                onChange={() => handleOptionTypeChange('rent')}
+                className="option-type-radio"
+                disabled={!isRentAvailable}
+              />
+              <label 
+                htmlFor="rent-option" 
+                className={`option-type-label ${!isRentAvailable ? 'disabled' : ''}`}
+                title={!isRentAvailable ? 'Rent option only available for Medical Equipment' : ''}
+              >
+                <div className="option-icon">⏱️</div>
+                <div className="option-title">Rent</div>
+                <div className="option-description">
+                  {isRentAvailable ? 'Temporary usage' : 'Medical Equipment only'}
+                </div>
+              </label>
+            </div>
+
+            {/* Warning message when rent is not available */}
+            {!isRentAvailable && formData.optionType === 'rent' && (
+              <div className="warning-message">
+                Rent option is only available for Medical Equipment. Please select Donate or Sell for Medicine.
+              </div>
+            )}
           </div>
 
           {/* Name */}
@@ -197,10 +313,20 @@ const DonateRent = () => {
             />
           </div>
 
-          {/* Price (show for sell/rent) */}
+          {/* Sale Price (show for sell/rent) */}
           {(formData.optionType === 'sell' || formData.optionType === 'rent') && (
             <div className="form-group">
-              <label>{formData.optionType === 'rent' ? 'Sale Price ($)' : 'Price ($)'}:</label>
+              <label>
+                Sale Price (₹)
+                {formData.optionType === 'rent' && (
+                  <span className="info-tooltip">
+                    <span className="tooltip-text">
+                      This is the price if someone wants to buy the item instead of renting
+                    </span>
+                  </span>
+                )}
+                :
+              </label>
               <input
                 type="number"
                 name="price"
@@ -214,11 +340,13 @@ const DonateRent = () => {
             </div>
           )}
 
-          {/* Rent-specific fields */}
-          {formData.optionType === 'rent' && (
-            <>
+          {/* Rent-specific fields - Only show for medical equipment with rent option */}
+          {formData.optionType === 'rent' && isRentAvailable && (
+            <div className={`rent-section ${highlightRent ? 'highlight' : ''}`}>
+              <h4>Rental Information</h4>
+              
               <div className="form-group">
-                <label>Rent Price ($/day):</label>
+                <label>Rent Price (₹/day):</label>
                 <input
                   type="number"
                   name="rentPrice"
@@ -230,19 +358,32 @@ const DonateRent = () => {
                   required
                 />
               </div>
-              <div className="form-group">
-                <label>Minimum Rental Duration (days):</label>
-                <input
-                  type="number"
-                  name="duration"
-                  value={formData.duration}
-                  onChange={handleInputChange}
-                  placeholder="Enter minimum rental duration"
-                  min="1"
-                  required
-                />
+
+              {/* Rent comparison information */}
+              {rentComparison && (
+                <div className="price-comparison">
+                  <div className="price-item sale">
+                    <div className="price-label">Sale Price</div>
+                    <div className="price-value">${formData.price}</div>
+                  </div>
+                  <div className="price-item rent">
+                    <div className="price-label">Weekly Rent</div>
+                    <div className="price-value">${rentComparison.weeklyCost}</div>
+                  </div>
+                  <div className="price-item rent">
+                    <div className="price-label">Monthly Rent</div>
+                    <div className="price-value">${rentComparison.monthlyCost}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="rent-features">
+                <div className="rent-feature">Flexible rental periods</div>
+                <div className="rent-feature">Daily pricing</div>
+                <div className="rent-feature">No minimum rental period</div>
+                <div className="rent-feature">Perfect for temporary needs</div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Image Upload */}
@@ -273,7 +414,13 @@ const DonateRent = () => {
 
           {/* Submit Button */}
           <button type="submit" disabled={loading} className="submit-btn">
-            {loading ? 'Adding Item...' : 'Add Item'}
+            {loading ? (
+              <>
+                Adding Item<span className="loading-dots"></span>
+              </>
+            ) : (
+              `Add Item for ${formData.optionType === 'donate' ? 'Donation' : formData.optionType === 'sell' ? 'Sale' : 'Rental'}`
+            )}
           </button>
         </form>
       </div>

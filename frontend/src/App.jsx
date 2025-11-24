@@ -7,10 +7,13 @@ import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Medicines from './pages/Medicine';
-import MedicalEquipments from './pages/MedicalEquipment';
+import MedicineDetails from './pages/MedicineDetails';
+import MedicalEquipment from './pages/MedicalEquipment';
+import MedicalEquipmentDetails from './pages/MedicalEquipmentDetails';
 import DonateRent from './pages/DonateRent';
 import About from './pages/About';
 import Profile from './pages/Profile';
+import Cart from './pages/Cart'; // NEW: Import Cart
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -113,11 +116,35 @@ function App() {
           }
         />
         <Route
+          path="/medicines/:id"
+          element={
+            isLoggedIn ? (
+              <Layout>
+                <MedicineDetails />
+              </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/medicalequipments"
           element={
             isLoggedIn ? (
               <Layout>
-                <MedicalEquipments />
+                <MedicalEquipment />
+              </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/medicalequipments/:id"
+          element={
+            isLoggedIn ? (
+              <Layout>
+                <MedicalEquipmentDetails />
               </Layout>
             ) : (
               <Navigate to="/login" replace />
@@ -154,6 +181,19 @@ function App() {
             isLoggedIn ? (
               <Layout>
                 <Profile />
+              </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        {/* NEW: Cart Route */}
+        <Route
+          path="/cart"
+          element={
+            isLoggedIn ? (
+              <Layout>
+                <Cart />
               </Layout>
             ) : (
               <Navigate to="/login" replace />

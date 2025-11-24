@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './MedicalEquipment.css';
 
@@ -6,6 +7,8 @@ const MedicalEquipment = () => {
   const [equipments, setEquipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [imageErrors, setImageErrors] = useState(new Set());
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchEquipments();
@@ -47,77 +50,50 @@ const MedicalEquipment = () => {
     }
   };
 
-  const handleAction = async (equipmentId, action, quantity = 1) => {
-    try {
-      setMessage('');
-      
-      const response = await axios.post(`http://localhost:5001/api/equipments/action/${equipmentId}`, {
-        action: action,
-        quantity: quantity
-      });
-
-      if (response.data.success) {
-        setMessage(`${action} successful!`);
-        // Update local state
-        setEquipments(prevEquipments => 
-          prevEquipments.map(eq => 
-            eq.id === equipmentId 
-              ? { ...eq, quantity: response.data.remainingQuantity }
-              : eq
-          )
-        );
-      }
-    } catch (error) {
-      console.error(`💥 ${action} error:`, error);
-      setMessage(error.response?.data?.message || `Error during ${action}`);
-    }
+  const handleImageError = (equipmentId) => {
+    setImageErrors(prev => new Set(prev.add(equipmentId)));
   };
 
-  const getActionButton = (equipment) => {
+  const handleViewDetails = (equipmentId) => {
+    // Navigate to equipment details page
+    navigate(`/medicalequipments/${equipmentId}`);
+  };
+
+  const getEquipmentIcon = (equipmentName) => {
+    const name = equipmentName.toLowerCase();
+    if (name.includes('wheelchair')) return '♿';
+    if (name.includes('bed')) return '🛏️';
+    if (name.includes('walker')) return '🚶';
+    if (name.includes('oxygen')) return '💨';
+    if (name.includes('monitor')) return '📊';
+    if (name.includes('crutch')) return '🩼';
+    if (name.includes('injection')) return '💉';
+    if (name.includes('stethoscope')) return '🎧';
+    return '🏥';
+  };
+
+  const getActionButtonText = (equipment) => {
     const optionType = equipment.optionType?.toLowerCase() || 'donate';
     
     switch (optionType) {
       case 'donate':
-        return (
-          <button 
-            onClick={() => handleAction(equipment.id, 'get')}
-            disabled={equipment.quantity === 0}
-            className="action-btn donate"
-          >
-            Get Free
-          </button>
-        );
+        return 'Get Free';
       case 'sell':
-        return (
-          <button 
-            onClick={() => handleAction(equipment.id, 'buy')}
-            disabled={equipment.quantity === 0}
-            className="action-btn sell"
-          >
-            Buy - ${equipment.price || 0}
-          </button>
-        );
+        return `Buy - $${equipment.price || 0}`;
       case 'rent':
-        return (
-          <button 
-            onClick={() => handleAction(equipment.id, 'rent')}
-            disabled={equipment.quantity === 0}
-            className="action-btn rent"
-          >
-            Rent - ${equipment.rentPrice || 0}/day
-          </button>
-        );
+        return `Rent - $${equipment.rentPrice || 0}/day`;
       default:
-        return (
-          <button className="action-btn unknown" disabled>
-            Unknown Type
-          </button>
-        );
+        return 'View Details';
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading medical equipment...</div>;
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+        Loading medical equipment...
+      </div>
+    );
   }
 
   return (
@@ -129,7 +105,7 @@ const MedicalEquipment = () => {
           {message}
           <button 
             onClick={fetchEquipments} 
-            style={{marginLeft: '10px', padding: '5px 10px'}}
+            className="refresh-btn"
           >
             Refresh
           </button>
@@ -139,10 +115,11 @@ const MedicalEquipment = () => {
       <div className="equipment-grid">
         {equipments.length === 0 ? (
           <div className="no-items">
-            No medical equipment available
+            <div style={{fontSize: '3rem', marginBottom: '15px'}}>🏥</div>
+            No medical equipment available at the moment
             <button 
               onClick={fetchEquipments} 
-              style={{marginTop: '10px', padding: '8px 16px'}}
+              className="refresh-btn"
             >
               Try Again
             </button>
@@ -150,35 +127,67 @@ const MedicalEquipment = () => {
         ) : (
           equipments.map(equipment => (
             <div key={equipment.id} className="equipment-card">
-              {equipment.image && (
-                <img 
-                  src={`http://localhost:5001/uploads/${equipment.image}`} 
-                  alt={equipment.name}
-                  className="equipment-image"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              )}
+              <div className="image-container">
+                {equipment.image && !imageErrors.has(equipment.id) ? (
+                  <img 
+                    src={`http://localhost:5001/uploads/${equipment.image}`} 
+                    alt={equipment.name}
+                    className="equipment-image"
+                    onError={() => handleImageError(equipment.id)}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="image-placeholder">
+                    {getEquipmentIcon(equipment.name)}
+                  </div>
+                )}
+                <div className="quantity-badge">
+                  {equipment.quantity} in stock
+                </div>
+              </div>
+              
               <div className="equipment-info">
                 <h3>{equipment.name}</h3>
                 <p className="description">{equipment.description}</p>
+                
                 <div className="equipment-details">
                   <span className={`option-type ${equipment.optionType?.toLowerCase() || 'donate'}`}>
                     {(equipment.optionType || 'donate').toUpperCase()}
                   </span>
-                  <span className="quantity">Qty: {equipment.quantity}</span>
+                  
+                  <div className="detail-row">
+                    <span className="detail-label">Condition:</span>
+                    <span className="detail-value">{equipment.condition}</span>
+                  </div>
+
                   {equipment.optionType === 'sell' && equipment.price > 0 && (
-                    <span className="price">${equipment.price}</span>
+                    <div className="detail-row">
+                      <span className="detail-label">Price:</span>
+                      <span className="detail-value price">${equipment.price}</span>
+                    </div>
                   )}
+                  
                   {equipment.optionType === 'rent' && equipment.rentPrice > 0 && (
-                    <span className="rent-price">${equipment.rentPrice}/day</span>
+                    <div className="detail-row">
+                      <span className="detail-label">Rent Price:</span>
+                      <span className="detail-value rent-price">${equipment.rentPrice}/day</span>
+                    </div>
                   )}
+                  
                   {equipment.optionType === 'rent' && equipment.duration > 0 && (
-                    <span className="duration">Min: {equipment.duration} days</span>
+                    <div className="detail-row">
+                      <span className="detail-label">Minimum Rental:</span>
+                      <span className="detail-value duration">{equipment.duration} days</span>
+                    </div>
                   )}
                 </div>
-                {getActionButton(equipment)}
+                
+                <button 
+                  onClick={() => handleViewDetails(equipment.id)}
+                  className={`view-details-btn ${equipment.optionType}`}
+                >
+                  View Details
+                </button>
               </div>
             </div>
           ))

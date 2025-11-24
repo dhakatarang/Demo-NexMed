@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -10,9 +9,10 @@ const medicineRoutes = require("./routes/medicineRoutes");
 const equipmentRoutes = require("./routes/equipmentRoutes");
 const donaterentRoutes = require("./routes/donaterentRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const cartRoutes = require("./routes/cartRoutes"); // NEW: Import cart routes
 
-// Import database initialization - FIX THE FILENAME
-const { initAllDatabases } = require("./database/initDatabases"); // Changed from initDatabases to initdatabases
+// Import database initialization
+const { initAllDatabases } = require("./database/initDatabases");
 
 const app = express();
 
@@ -57,7 +57,7 @@ app.get("/", (req, res) => {
   res.json({ 
     message: "NexMed Backend is Running ✅",
     version: "2.0",
-    features: ["Enhanced Donate/Rent System", "Image Upload", "SQLite3 Database", "User Authentication"],
+    features: ["Enhanced Donate/Rent System", "Image Upload", "SQLite3 Database", "User Authentication", "Shopping Cart"],
     timestamp: new Date().toISOString()
   });
 });
@@ -72,6 +72,7 @@ app.get("/api/debug-db", (req, res) => {
     { name: 'users', query: 'SELECT COUNT(*) as count FROM users' },
     { name: 'medicines', query: 'SELECT COUNT(*) as count FROM medicines' },
     { name: 'equipments', query: 'SELECT COUNT(*) as count FROM equipments' },
+    { name: 'cart', query: 'SELECT COUNT(*) as count FROM cart' },
     { name: 'donaterent', query: 'SELECT COUNT(*) as count FROM donaterent' },
     { name: 'orders', query: 'SELECT COUNT(*) as count FROM orders' }
   ];
@@ -115,6 +116,7 @@ app.use("/api/medicines", medicineRoutes);
 app.use("/api/equipments", equipmentRoutes);
 app.use("/api/donaterent", donaterentRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/cart", cartRoutes); // NEW: Cart routes
 
 // 404 fallback
 app.use((req, res, next) => {
@@ -147,6 +149,7 @@ app.listen(PORT, () => {
   console.log(`📁 Uploads served from: ${uploadsDir}`);
   console.log(`💊 Medicines API: http://localhost:${PORT}/api/medicines`);
   console.log(`🏥 Equipment API: http://localhost:${PORT}/api/equipments`);
+  console.log(`🛒 Cart API: http://localhost:${PORT}/api/cart`);
   console.log(`🤝 Donate/Rent API: http://localhost:${PORT}/api/donaterent`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`👤 Profile API: http://localhost:${PORT}/api/profile`);

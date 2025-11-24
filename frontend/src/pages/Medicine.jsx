@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Medicine.css';
 
@@ -6,6 +7,7 @@ const Medicine = () => {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchMedicines();
@@ -40,29 +42,9 @@ const Medicine = () => {
     }
   };
 
-  const handleBuy = async (medicineId, quantity = 1) => {
-    try {
-      setMessage('');
-      
-      const response = await axios.post(`http://localhost:5001/api/medicines/buy/${medicineId}`, {
-        quantity: quantity
-      });
-
-      if (response.data.success) {
-        setMessage('Purchase successful!');
-        // Update local state
-        setMedicines(prevMedicines => 
-          prevMedicines.map(med => 
-            med.id === medicineId 
-              ? { ...med, quantity: response.data.remainingQuantity }
-              : med
-          )
-        );
-      }
-    } catch (error) {
-      console.error('💥 Purchase error:', error);
-      setMessage(error.response?.data?.message || 'Error purchasing medicine');
-    }
+  const handleViewDetails = (medicineId) => {
+    // Navigate to medicine details page
+    navigate(`/medicines/${medicineId}`);
   };
 
   if (loading) {
@@ -105,7 +87,7 @@ const Medicine = () => {
                   alt={medicine.name}
                   className="medicine-image"
                   onError={(e) => {
-                    e.target.style.display = 'none'; // Hide broken images
+                    e.target.style.display = 'none';
                   }}
                 />
               )}
@@ -122,11 +104,10 @@ const Medicine = () => {
                   )}
                 </div>
                 <button 
-                  onClick={() => handleBuy(medicine.id, 1)}
-                  disabled={medicine.quantity === 0}
-                  className={`buy-btn ${medicine.optionType} ${medicine.quantity === 0 ? 'disabled' : ''}`}
+                  onClick={() => handleViewDetails(medicine.id)}
+                  className={`view-details-btn ${medicine.optionType}`}
                 >
-                  {medicine.optionType === 'donate' ? 'Get Free' : `Buy - $${medicine.price}`}
+                  View Details
                 </button>
               </div>
             </div>

@@ -1,3 +1,4 @@
+// backend/database/initDatabases.js
 const { mainDB } = require('./dbConnections');
 
 function initAllDatabases() {
@@ -84,6 +85,34 @@ function initAllDatabases() {
     }
   });
 
+  // Cart table - NEW
+  mainDB.run(`
+    CREATE TABLE IF NOT EXISTS cart (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      item_id INTEGER NOT NULL,
+      item_type TEXT NOT NULL CHECK(item_type IN ('medicine', 'medicalequipment')),
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK(quantity > 0),
+      price DECIMAL(10,2) DEFAULT 0,
+      rent_price DECIMAL(10,2) DEFAULT 0,
+      option_type TEXT NOT NULL CHECK(option_type IN ('donate', 'sell', 'rent')),
+      image TEXT,
+      rental_days INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, item_id, item_type)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('❌ Error creating cart table:', err);
+    } else {
+      console.log('✅ Cart table created/verified');
+    }
+  });
+
   // DonateRent table
   mainDB.run(`
     CREATE TABLE IF NOT EXISTS donaterent (
@@ -148,6 +177,8 @@ function createIndexes() {
     'CREATE INDEX IF NOT EXISTS idx_medicines_status ON medicines(status)',
     'CREATE INDEX IF NOT EXISTS idx_equipments_added_by ON equipments(added_by)',
     'CREATE INDEX IF NOT EXISTS idx_equipments_status ON equipments(status)',
+    'CREATE INDEX IF NOT EXISTS idx_cart_user_id ON cart(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_cart_item_type ON cart(item_type)',
     'CREATE INDEX IF NOT EXISTS idx_donaterent_user_id ON donaterent(user_id)',
     'CREATE INDEX IF NOT EXISTS idx_donaterent_item_type ON donaterent(item_type)',
     'CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)',
