@@ -52,59 +52,67 @@ function Login({ setIsLoggedIn }) {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        if (!validateForm()) {
-            return;
-        }
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
 
-        setIsLoading(true);
+  setIsLoading(true);
 
-        try {
-            console.log('📍 Sending login request to backend...');
-            const res = await axios.post('http://localhost:5001/api/auth/login', {
-                email: formData.email.toLowerCase(),
-                password: formData.password
-            });
+  try {
+    console.log('📍 Sending login request to backend...');
+    const res = await axios.post('http://localhost:5001/api/auth/login', {
+      email: formData.email.toLowerCase(),
+      password: formData.password
+    });
 
-            console.log('✅ Login successful:', res.data);
-            
-            // Store the actual JWT token from backend response
-            if (res.data.token) {
-                localStorage.setItem('token', res.data.token);
-                localStorage.setItem('user', JSON.stringify(res.data.user));
-                console.log('🔐 Token stored:', res.data.token);
-                
-                // Update login state in App.jsx
-                if (setIsLoggedIn) {
-                    setIsLoggedIn(true);
-                }
-                
-                // Also dispatch custom event for App.jsx to catch
-                window.dispatchEvent(new Event('loginStateChange'));
-            }
-            
-            alert('Login Successful!');
-            navigate('/home');
-            
-        } catch (err) {
-            console.error('💥 Login error:', err);
-            console.error('💥 Error response:', err.response);
-            
-            // Enhanced error handling
-            const errorMessage = err.response?.data?.error || 
-                               err.response?.data?.message || 
-                               'Login failed. Please try again.';
-            
-            if (err.response?.status === 401) {
-                setErrors({ general: 'Invalid email or password' });
-            } else {
-                alert(errorMessage);
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    console.log('✅ Login successful:', res.data);
+    
+    // Store the actual JWT token from backend response
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      console.log('🔐 Token stored:', res.data.token);
+      console.log('👤 User data stored:', res.data.user);
+      console.log('🔑 User role:', res.data.user.role);
+      
+      // Update login state in App.jsx
+      if (setIsLoggedIn) {
+        setIsLoggedIn(true);
+      }
+      
+      // Also dispatch custom event for App.jsx to catch
+      window.dispatchEvent(new Event('loginStateChange'));
+    }
+    
+    // AUTO-REDIRECT BASED ON ROLE
+    if (res.data.user.role === 'admin') {
+      console.log('🚀 Redirecting to ADMIN panel');
+      navigate('/admin');
+    } else {
+      console.log('🏠 Redirecting to USER home');
+      navigate('/home');
+    }
+    
+  } catch (err) {
+    console.error('💥 Login error:', err);
+    console.error('💥 Error response:', err.response);
+    
+    // Enhanced error handling
+    const errorMessage = err.response?.data?.error || 
+                        err.response?.data?.message || 
+                        'Login failed. Please try again.';
+    
+    if (err.response?.status === 401) {
+      setErrors({ general: 'Invalid email or password' });
+    } else {
+      alert(errorMessage);
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);

@@ -1,3 +1,4 @@
+// backend/controllers/authController.js
 const bcrypt = require('bcryptjs');
 const { mainDB } = require('../database/dbConnections');
 const path = require('path');
@@ -150,13 +151,23 @@ const login = async (req, res) => {
           });
         }
 
-        // Return user data (without password)
+        // Return user data (without password) - FIXED: Include role mapping
         const { password: _, ...userData } = user;
+        
+        // Map user_type to role for frontend compatibility
+        const userWithRole = {
+          ...userData,
+          role: userData.role || userData.user_type // Use role if exists, fallback to user_type
+        };
+        
+        console.log('👤 User login data:', userWithRole);
+        console.log('🔑 User role:', userWithRole.role);
+        console.log('👑 Is admin?', userWithRole.role === 'admin');
         
         res.json({
           success: true,
           message: 'Login successful',
-          user: userData,
+          user: userWithRole, // Send the mapped user data
           token: user.id.toString()
         });
       }
@@ -171,5 +182,4 @@ const login = async (req, res) => {
     });
   }
 };
-
 module.exports = { signup, login };

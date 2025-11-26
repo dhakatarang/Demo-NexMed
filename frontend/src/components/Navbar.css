@@ -138,6 +138,11 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+.admin-badge {
+  margin-left: 5px;
+  font-size: 12px;
+}
+
 .dropdown-arrow {
   font-size: 10px;
   transition: transform 0.3s ease;
@@ -190,6 +195,16 @@
 .dropdown-item:hover {
   background: #f8f9fa;
   color: #667eea;
+}
+
+.dropdown-item.admin-link {
+  color: #d63384;
+  font-weight: bold;
+}
+
+.dropdown-item.admin-link:hover {
+  background: #d63384;
+  color: white;
 }
 
 .dropdown-item.logout {

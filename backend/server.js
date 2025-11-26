@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -9,7 +10,8 @@ const medicineRoutes = require("./routes/medicineRoutes");
 const equipmentRoutes = require("./routes/equipmentRoutes");
 const donaterentRoutes = require("./routes/donaterentRoutes");
 const profileRoutes = require("./routes/profileRoutes");
-const cartRoutes = require("./routes/cartRoutes"); // NEW: Import cart routes
+const cartRoutes = require("./routes/cartRoutes");
+const adminRoutes = require("./routes/adminRoutes"); // NEW: Admin routes
 
 // Import database initialization
 const { initAllDatabases } = require("./database/initDatabases");
@@ -57,7 +59,7 @@ app.get("/", (req, res) => {
   res.json({ 
     message: "NexMed Backend is Running ✅",
     version: "2.0",
-    features: ["Enhanced Donate/Rent System", "Image Upload", "SQLite3 Database", "User Authentication", "Shopping Cart"],
+    features: ["Enhanced Donate/Rent System", "Image Upload", "SQLite3 Database", "User Authentication", "Shopping Cart", "Admin Panel"],
     timestamp: new Date().toISOString()
   });
 });
@@ -116,7 +118,8 @@ app.use("/api/medicines", medicineRoutes);
 app.use("/api/equipments", equipmentRoutes);
 app.use("/api/donaterent", donaterentRoutes);
 app.use("/api/profile", profileRoutes);
-app.use("/api/cart", cartRoutes); // NEW: Cart routes
+app.use("/api/cart", cartRoutes);
+app.use("/api/admin", adminRoutes); // NEW: Admin routes
 
 // 404 fallback
 app.use((req, res, next) => {
@@ -150,6 +153,7 @@ app.listen(PORT, () => {
   console.log(`💊 Medicines API: http://localhost:${PORT}/api/medicines`);
   console.log(`🏥 Equipment API: http://localhost:${PORT}/api/equipments`);
   console.log(`🛒 Cart API: http://localhost:${PORT}/api/cart`);
+  console.log(`👑 Admin API: http://localhost:${PORT}/api/admin`);
   console.log(`🤝 Donate/Rent API: http://localhost:${PORT}/api/donaterent`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`👤 Profile API: http://localhost:${PORT}/api/profile`);

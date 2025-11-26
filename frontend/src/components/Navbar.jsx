@@ -56,7 +56,7 @@ const Navbar = () => {
         {/* Logo */}
         <div className="nav-logo">
           <Link to="/home" className="logo-link">
-            <span className="logo-icon">🏥</span>
+            <span className="logo-icon"></span>
             <span className="logo-text">NexMed</span>
           </Link>
         </div>
@@ -102,6 +102,7 @@ const Navbar = () => {
               <div className="user-info" onClick={toggleDropdown}>
                 <span className="user-name">
                   {user.name || user.email}
+                  {user.role === 'admin' && <span className="admin-badge">👑</span>}
                 </span>
                 <span className={`dropdown-arrow ${dropdownOpen ? 'open' : ''}`}>
                   ▼
@@ -118,7 +119,6 @@ const Navbar = () => {
                     👤 Profile
                   </Link>
                   
-                  {/* NEW: Cart Option */}
                   <Link 
                     to="/cart" 
                     className="dropdown-item"
@@ -126,6 +126,20 @@ const Navbar = () => {
                   >
                     🛒 Cart
                   </Link>
+                  
+                  {/* Admin Link - Only show for admin users */}
+                  {user.role === 'admin' && (
+                    <>
+                      <div className="dropdown-divider"></div>
+                      <Link 
+                        to="/admin" 
+                        className="dropdown-item admin-link"
+                        onClick={closeDropdown}
+                      >
+                        ⚙️ Admin Panel
+                      </Link>
+                    </>
+                  )}
                   
                   <div className="dropdown-divider"></div>
                   <button 

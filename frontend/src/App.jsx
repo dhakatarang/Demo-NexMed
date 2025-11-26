@@ -1,3 +1,4 @@
+// frontend/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -13,7 +14,9 @@ import MedicalEquipmentDetails from './pages/MedicalEquipmentDetails';
 import DonateRent from './pages/DonateRent';
 import About from './pages/About';
 import Profile from './pages/Profile';
-import Cart from './pages/Cart'; // NEW: Import Cart
+import Cart from './pages/Cart';
+import AdminPanel from './pages/AdminPanel'; // NEW: Admin Panel
+
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -187,7 +190,6 @@ function App() {
             )
           }
         />
-        {/* NEW: Cart Route */}
         <Route
           path="/cart"
           element={
@@ -195,6 +197,18 @@ function App() {
               <Layout>
                 <Cart />
               </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        
+        {/* NEW: Admin Routes */}
+        <Route
+          path="/admin/*"
+          element={
+            isLoggedIn ? (
+              <AdminPanel />
             ) : (
               <Navigate to="/login" replace />
             )
